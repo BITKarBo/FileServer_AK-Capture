@@ -1,5 +1,8 @@
 File server for AK-CAPTURE
 
+https://github.com/BITKarBo/AK-Capture
+https://github.com/BITKarBo/FileServer_AK-Capture
+
 Usage:
 
 	Make own remote file server with FileServerini.jar by running it in your own server.
@@ -17,3 +20,4 @@ Usage:
 		--port [port]
 		--pass [password] <-- SHA256 Encryption
 		--path [/temp]  <-- change your own
+Enjoy - KarBo_
