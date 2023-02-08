@@ -24,7 +24,7 @@ public class Main {
 
 	private static String PORT;
 	private static String FilePath;
-	
+
 	public static class HashUtil {
 
 		public static byte[] getSHA256Hash(String input) throws NoSuchAlgorithmException {
@@ -34,6 +34,7 @@ public class Main {
 			return hash;
 		}
 	}
+
 	public static void main(String[] args) throws FileNotFoundException, NoSuchAlgorithmException {
 
 		if (args.length > 0) {
@@ -60,17 +61,18 @@ public class Main {
 					if (argus[0].equals("--pass")) {
 
 						Passwordi = HashUtil.getSHA256Hash(argus[1]);
-						
+
 					}
 					if (argus[0].equals("--path")) {
 						FilePath = argus[1];
 					}
 					if (argus[0].equals("--port")) {
 						PORT = argus[1];
-					}				}
+					}
+				}
 			}
 		} catch (Exception e) {
-			
+
 			e.printStackTrace();
 			System.out.println("Please add arguments to cfg.config");
 		}
@@ -82,7 +84,6 @@ public class Main {
 
 		System.out.println("File Server online");
 		boolean käynnissä = true;
-		boolean Kirjautunut = true;
 
 		ServerSocket serverSocket;
 		try {
@@ -97,75 +98,88 @@ public class Main {
 					System.out.println(ip.toString() + ": Blacklisted user is trying to connect...");
 					socket.close();
 				}
+				Thread clienThread = new Thread() {
+					public void run() {
 
-				DataInputStream dataInputStream = new DataInputStream(socket.getInputStream());
-				int securityLenght = dataInputStream.readInt();
+						boolean Kirjautunut = false;
+						try {
+							DataInputStream dataInputStream = new DataInputStream(socket.getInputStream());
+							int securityLenght = dataInputStream.readInt();
 
-				if (securityLenght == 32) {
-					byte[] SecurityBytes = Passwordi;
-					byte[] tryBytes = new byte[32];
-					dataInputStream.readFully(tryBytes, 0, securityLenght);
-					for (int i = 0; i < securityLenght; i++) {
-						if (SecurityBytes[i] == tryBytes[i]) {
-							Kirjautunut &= true;
-						} else {
-							Kirjautunut = false;
-							System.out.println(ip.toString() + ": Tried to login with wrong password!");
-							if (!BlackList.containsKey(ip)) {
-								BlackList.put(ip, 1);
-							} else if (BlackList.containsKey(ip)) {
-								int valu = BlackList.get(ip);
-								valu++;
-								BlackList.put(ip, valu);
+							if (securityLenght == 32) {
+								byte[] SecurityBytes = Passwordi;
+								byte[] tryBytes = new byte[32];
+								dataInputStream.readFully(tryBytes, 0, securityLenght);
+								for (int i = 0; i < securityLenght; i++) {
+									if (SecurityBytes[i] == tryBytes[i]) {
+										Kirjautunut = true;
+									} else {
+										Kirjautunut = false;
+										System.out.println(ip.toString() + ": Tried to login with wrong password!");
+										if (!BlackList.containsKey(ip)) {
+											BlackList.put(ip, 1);
+										} else if (BlackList.containsKey(ip)) {
+											int valu = BlackList.get(ip);
+											valu++;
+											BlackList.put(ip, valu);
+										}
+										socket.close();
+										break;
+									}
+								}
 							}
 
-							break;
-						}
-					}
-				}
+							int fileNameLength = dataInputStream.readInt();
 
-				int fileNameLength = dataInputStream.readInt();
+							if (fileNameLength > 0 && Kirjautunut) {
 
-				if (fileNameLength > 0 && Kirjautunut) {
+								System.out.println(ip.toString() + ": Connected with password.");
+								
+								byte[] fileNameBytes = new byte[fileNameLength];
+								dataInputStream.readFully(fileNameBytes, 0, fileNameBytes.length);
 
-					System.out.println(ip.toString() + ": Connected with password.");
-					byte[] fileNameBytes = new byte[fileNameLength];
-					dataInputStream.readFully(fileNameBytes, 0, fileNameBytes.length);
+								String fileName = new String(fileNameBytes);
+								System.out
+										.println(socket.getRemoteSocketAddress().toString() + ": Sending File: " + fileName);
+								int fileContentLength = dataInputStream.readInt();
 
-					String fileName = new String(fileNameBytes);
-					System.out
-							.println(socket.getRemoteSocketAddress().toString() + ": Sending File: " + fileName);
-					int fileContentLength = dataInputStream.readInt();
+								if (fileContentLength > 0) {
+									byte[] fileContentBytes = new byte[fileContentLength];
 
-					if (fileContentLength > 0) {
-						byte[] fileContentBytes = new byte[fileContentLength];
+									dataInputStream.readFully(fileContentBytes, 0, fileContentLength);
 
-						dataInputStream.readFully(fileContentBytes, 0, fileContentLength);
+									if (getFileExtension(fileName).equalsIgnoreCase("gif")) {
 
-						if (getFileExtension(fileName).equalsIgnoreCase("gif")) {
+										File fileDownload = new File(FilePath + fileName);
 
-							File fileDownload = new File(FilePath + fileName);
+										try {
+											FileOutputStream fileOutputStream = new FileOutputStream(fileDownload);
 
-							try {
-								FileOutputStream fileOutputStream = new FileOutputStream(fileDownload);
+											fileOutputStream.write(fileContentBytes);
+											fileOutputStream.close();
 
-								fileOutputStream.write(fileContentBytes);
-								fileOutputStream.close();
-
-								System.out.println(
-										socket.getRemoteSocketAddress().toString() + ": " + fileName + " Received.");
-							} catch (Exception e) {
-								e.printStackTrace();
+											System.out.println(
+													socket.getRemoteSocketAddress().toString() + ": " + fileName + " Received.");
+										} catch (Exception e) {
+											e.printStackTrace();
+										}
+									}
+								}
 							}
+						} catch (IOException e) {
+							e.printStackTrace();
 						}
 					}
-				}
 
+				};
+				
+				clienThread.run();
 			}
 
 			serverSocket.close();
 
 		} catch (IOException e1) {
+			System.out.println("FATAL ERROR: SEVER CRASH!");
 			e1.printStackTrace();
 		}
 	}
