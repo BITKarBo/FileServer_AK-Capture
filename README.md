@@ -24,3 +24,6 @@ Usage:
 		--pass [password] <-- SHA256 Encryption
 		--path [/temp]  <-- change your own
 Enjoy - KarBo_
+
++ Multi Threaded
++ FIX crashing
